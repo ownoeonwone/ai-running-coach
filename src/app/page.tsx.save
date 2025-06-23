@@ -4,8 +4,7 @@ import { useSession, signIn, signOut } from 'next-auth/react'
 import { useState } from 'react'
 import { Activity } from 'lucide-react'
 
-export default function AIRunningCoach() {
-  const { data: session, status } = useSession()
+export default function   const [currentView, setCurrentView] = useState('dashboard')
 
   if (status === 'loading') {
     return (
