@@ -1,32 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import NextAuth from 'next-auth'
+import StravaProvider from 'next-auth/providers/strava'
 
 const authOptions = {
   providers: [
-    {
-      id: "strava",
-      name: "Strava",
-      type: "oauth",
+    StravaProvider({
+      clientId: process.env.STRAVA_CLIENT_ID!,
+      clientSecret: process.env.STRAVA_CLIENT_SECRET!,
       authorization: {
-        url: "https://www.strava.com/oauth/authorize",
         params: {
-          scope: "read,activity:read_all,profile:read_all",
-          response_type: "code",
+          scope: "read,activity:read_all,profile:read_all"
         }
-      },
-      token: "https://www.strava.com/oauth/token",
-      userinfo: "https://www.strava.com/api/v3/athlete",
-      clientId: process.env.STRAVA_CLIENT_ID,
-      clientSecret: process.env.STRAVA_CLIENT_SECRET,
-      profile(profile: any) {
-        return {
-          id: profile.id.toString(),
-          name: `${profile.firstname} ${profile.lastname}`,
-          email: profile.email,
-          image: profile.profile,
-        }
-      },
-    },
+      }
+    })
   ],
   callbacks: {
     async jwt({ token, account }: any) {
