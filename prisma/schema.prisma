@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                  String         @id @default(cuid())
+  name                String?
+  email               String         @unique
+  emailVerified       DateTime?
+  image               String?
+  stravaId            BigInt?        @unique
+  goalType            String?
+  goalDate            DateTime?
+  goalTime            String?
+  experienceLevel     String?
+  weeklyMileage       Int?
+  communicationStyle  String?
+  preferredDays       String[]
+  heartRateMonitor    String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  accounts            Account[]
+  sessions            Session[]
+  activities          Activity[]
+  trainingPlan        TrainingPlan?
+  chatMessages        ChatMessage[]
+  follows             Follow[]       @relation("UserFollows")
+  followers           Follow[]       @relation("UserFollowers")
+  kudos               Kudos[]
+}
+
+model Activity {
+  id                  String    @id @default(cuid())
+  userId              String
+  stravaActivityId    BigInt    @unique
+  name                String
+  date                DateTime
+  distance            Float?
+  duration            Int?
+  pace                Int?
+  elevationGain       Float?
+  avgHeartRate        Int?
+  maxHeartRate        Int?
+  weatherTemp         Float?
+  weatherConditions   String?
+  aiAnalysis          String?
+  coachFeedback       String?
+  executionScore      Int?
+  plannedWorkoutId    String?
+  createdAt           DateTime  @default(now())
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kudos               Kudos[]
+
+  @@index([userId, date])
+}
+
+model TrainingPlan {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  goalType        String
+  startDate       DateTime
+  raceDate        DateTime?
+  totalWeeks      Int
+  currentWeek     Int       @default(1)
+  planData        Json
+  adjustmentsMade Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workouts        Workout[]
+}
+
+model Workout {
+  id                String       @id @default(cuid())
+  trainingPlanId    String
+  date              DateTime
+  workoutType       String
+  description       String?
+  targetDistance    Float?
+  targetPace        Int?
+  targetDuration    Int?
+  completed         Boolean      @default(false)
+  actualActivityId  String?
+  createdAt         DateTime     @default(now())
+
+  trainingPlan      TrainingPlan @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
+
+  @@index([trainingPlanId, date])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  sender    String
+  message   String
+  context   Json?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower    User     @relation("UserFollows", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}
+
+model Kudos {
+  id         String   @id @default(cuid())
+  userId     String
+  activityId String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
