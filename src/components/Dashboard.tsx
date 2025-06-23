@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Activity, Trophy, Calendar, TrendingUp, Target, MessageCircle } from 'lucide-react'
+import { Trophy, TrendingUp } from 'lucide-react'
 
 export default function Dashboard() {
   const [userProfile] = useState({
