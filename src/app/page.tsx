@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession, signIn } from 'next-auth/react'
+import { useSession, signIn, signOut } from 'next-auth/react'
 import Dashboard from '../components/Dashboard'
 
 export default function Home() {
@@ -18,10 +18,9 @@ export default function Home() {
   }
 
   if (session) {
-    return <Dashboard />
+    return <Dashboard session={session} onSignOut={() => signOut()} />
   }
 
-  // Show login screen for non-authenticated users
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
