@@ -16,6 +16,7 @@ const authOptions = {
   ],
   callbacks: {
     async jwt({ token, account }: any) {
+      console.log('JWT callback - account:', account)
       if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
@@ -23,6 +24,7 @@ const authOptions = {
       return token
     },
     async session({ session, token }: any) {
+      console.log('Session callback - token:', token)
       return {
         ...session,
         accessToken: token.accessToken,
@@ -30,7 +32,8 @@ const authOptions = {
     }
   },
   secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true
+  trustHost: true,
+  debug: true
 }
 
 const handler = NextAuth(authOptions)
