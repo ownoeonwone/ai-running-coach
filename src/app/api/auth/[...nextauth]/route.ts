@@ -1,7 +1,6 @@
 import NextAuth from 'next-auth'
-import type { NextAuthOptions } from 'next-auth'
 
-export const authOptions: NextAuthOptions = {
+const authOptions = {
   providers: [
     {
       id: "strava",
@@ -18,7 +17,13 @@ export const authOptions: NextAuthOptions = {
       userinfo: "https://www.strava.com/api/v3/athlete",
       clientId: process.env.STRAVA_CLIENT_ID,
       clientSecret: process.env.STRAVA_CLIENT_SECRET,
-      profile(profile) {
+      profile(profile: {
+        id: number;
+        firstname: string;
+        lastname: string;
+        email: string;
+        profile: string;
+      }) {
         return {
           id: profile.id.toString(),
           name: `${profile.firstname} ${profile.lastname}`,
@@ -29,13 +34,19 @@ export const authOptions: NextAuthOptions = {
     },
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account }: {
+      token: any;
+      account: any;
+    }) {
       if (account) {
         token.accessToken = account.access_token
       }
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: {
+      session: any;
+      token: any;
+    }) {
       return {
         ...session,
         accessToken: token.accessToken,
