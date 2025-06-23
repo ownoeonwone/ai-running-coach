@@ -1,4 +1,5 @@
-'use client'
+// Force deployment with dependencies - v2
+'use client''use client'
 
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useState } from 'react'
