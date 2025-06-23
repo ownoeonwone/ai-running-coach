@@ -27,8 +27,16 @@ const authOptions = {
         accessToken: token.accessToken,
       }
     }
-  }
+  },
+  // Add these missing configurations
+  pages: {
+    signIn: '/', // or whatever your main page is
+    error: '/auth/error' // optional error page
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true
 }
 
 const handler = NextAuth(authOptions)
 export { handler as GET, handler as POST }
+
