@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth'
 
-export default NextAuth({
+const handler = NextAuth({
   providers: [
     {
       id: "strava",
@@ -9,7 +9,7 @@ export default NextAuth({
       authorization: {
         url: "https://www.strava.com/oauth/authorize",
         params: {
-          scope: "read,activity:read",
+          scope: "read,activity:read_all,profile:read_all",
           response_type: "code",
         }
       },
@@ -27,7 +27,18 @@ export default NextAuth({
       },
     },
   ],
-  pages: {
-    signIn: '/auth/signin',
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token
+      }
+      return token
+    },
+    async session({ session, token }) {
+      session.accessToken = token.accessToken
+      return session
+    }
   }
 })
+
+export { handler as GET, handler as POST }
