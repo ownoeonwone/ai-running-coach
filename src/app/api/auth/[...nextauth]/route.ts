@@ -17,7 +17,7 @@ const handler = NextAuth({
       userinfo: "https://www.strava.com/api/v3/athlete",
       clientId: process.env.STRAVA_CLIENT_ID,
       clientSecret: process.env.STRAVA_CLIENT_SECRET,
-      profile(profile) {
+      profile(profile: any) {
         return {
           id: profile.id.toString(),
           name: `${profile.firstname} ${profile.lastname}`,
@@ -28,14 +28,15 @@ const handler = NextAuth({
     },
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account }: any) {
       if (account) {
         token.accessToken = account.access_token
       }
       return token
     },
-    async session({ session, token }) {
-      session.accessToken = token.accessToken
+    async session({ session, token }: any) {
+      // Type assertion to avoid TypeScript error
+      (session as any).accessToken = token.accessToken
       return session
     }
   }
