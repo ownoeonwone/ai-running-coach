@@ -1,7 +1,6 @@
 'use client'
 
 import { useSession, signIn, signOut } from 'next-auth/react'
-import { useState } from 'react'
 import { Activity } from 'lucide-react'
 
 export default function AIRunningCoach() {
