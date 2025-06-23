@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth'
+import type { NextAuthOptions } from 'next-auth'
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     {
       id: "strava",
@@ -17,7 +18,7 @@ const handler = NextAuth({
       userinfo: "https://www.strava.com/api/v3/athlete",
       clientId: process.env.STRAVA_CLIENT_ID,
       clientSecret: process.env.STRAVA_CLIENT_SECRET,
-      profile(profile: any) {
+      profile(profile) {
         return {
           id: profile.id.toString(),
           name: `${profile.firstname} ${profile.lastname}`,
@@ -28,18 +29,20 @@ const handler = NextAuth({
     },
   ],
   callbacks: {
-    async jwt({ token, account }: any) {
+    async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token
       }
       return token
     },
-    async session({ session, token }: any) {
-      // Type assertion to avoid TypeScript error
-      (session as any).accessToken = token.accessToken
-      return session
+    async session({ session, token }) {
+      return {
+        ...session,
+        accessToken: token.accessToken,
+      }
     }
   }
-})
+}
 
+const handler = NextAuth(authOptions)
 export { handler as GET, handler as POST }
