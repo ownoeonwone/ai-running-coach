@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import NextAuth from 'next-auth'
 
 const authOptions = {
@@ -17,13 +18,7 @@ const authOptions = {
       userinfo: "https://www.strava.com/api/v3/athlete",
       clientId: process.env.STRAVA_CLIENT_ID,
       clientSecret: process.env.STRAVA_CLIENT_SECRET,
-      profile(profile: {
-        id: number;
-        firstname: string;
-        lastname: string;
-        email: string;
-        profile: string;
-      }) {
+      profile(profile: any) {
         return {
           id: profile.id.toString(),
           name: `${profile.firstname} ${profile.lastname}`,
@@ -34,19 +29,13 @@ const authOptions = {
     },
   ],
   callbacks: {
-    async jwt({ token, account }: {
-      token: any;
-      account: any;
-    }) {
+    async jwt({ token, account }: any) {
       if (account) {
         token.accessToken = account.access_token
       }
       return token
     },
-    async session({ session, token }: {
-      session: any;
-      token: any;
-    }) {
+    async session({ session, token }: any) {
       return {
         ...session,
         accessToken: token.accessToken,
