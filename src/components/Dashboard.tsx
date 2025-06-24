@@ -153,9 +153,54 @@ const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
     setOnboardingData(prev => ({ ...prev, [questionId]: value }));
   };
 
-  const handleSendMessage = () => {
-    if (!chatInput.trim()) return;
+const handleSendMessage = async () => {
+  if (!chatInput.trim()) return;
+  
+  const newMessage = {
+    sender: 'user',
+    message: chatInput,
+    timestamp: new Date(),
+    isTyping: false
+  };
+  
+  setChatMessages(prev => [...prev, newMessage]);
+  const currentInput = chatInput;
+  setChatInput('');
+  
+  // Add typing indicator
+  setChatMessages(prev => [...prev, {
+    sender: 'coach',
+    message: '',
+    timestamp: new Date(),
+    isTyping: true
+  }]);
+  
+  try {
+    const aiResponse = await generateAIResponse(currentInput);
     
+    // Replace typing indicator with actual response
+    setChatMessages(prev => [
+      ...prev.slice(0, -1),
+      {
+        sender: 'coach',
+        message: aiResponse,
+        timestamp: new Date(),
+        isTyping: false
+      }
+    ]);
+  } catch (error) {
+    console.error('Chat error:', error);
+    setChatMessages(prev => [
+      ...prev.slice(0, -1),
+      {
+        sender: 'coach',
+        message: "I'm having trouble connecting right now. Please try again in a moment!",
+        timestamp: new Date(),
+        isTyping: false
+      }
+    ]);
+  }
+};    
     const newMessage = {
       sender: 'user',
       message: chatInput,
@@ -165,7 +210,7 @@ const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
     setChatMessages([...chatMessages, newMessage]);
     
     setTimeout(() => {
-      const aiResponse = generateAIResponse(chatInput);
+const aiResponse = await generateAIResponse();
       setChatMessages(prev => [...prev, {
         sender: 'coach',
         message: aiResponse,
@@ -176,17 +221,29 @@ const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
     setChatInput('');
   };
 
-const generateAIResponse = async () => {
-    const responses = [
-      "That's excellent! Based on your recent running data, you're making great progress. Your aerobic base is getting stronger, which is perfect for marathon training. Keep focusing on easy runs at a conversational pace.",
-      "I understand your concern. Looking at your recent runs, your pacing has been very consistent, which is exactly what we want to see. Trust the process - consistency trumps intensity every time!",
-      "Great question! For marathon training, about 80% of your miles should be at an easy, conversational pace. Your heart rate should be in Zone 2. Your recent runs show you're nailing this!",
-      "Your dedication is really paying off! I can see improvements in your heart rate efficiency and pacing consistency. The key is to stay patient - fitness gains happen gradually but they're building every day.",
-      "Absolutely! Recovery is just as important as the hard work. Make sure you're getting enough sleep, staying hydrated, and listening to your body. If you're feeling overly fatigued, don't hesitate to take an extra easy day."
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
+const generateAIResponse = async (input: string) => {
+  try {
+    const response = await fetch('/api/ai-coach/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: input,
+        userProfile,
+        recentActivities,
+        onboardingData,
+        trainingPlan
+      }),
+    });
 
+    const data = await response.json();
+    return data.response || "I'm here to help with your running! Could you tell me more?";
+  } catch (error) {
+    console.error('AI Coach error:', error);
+    return "I'm having trouble connecting right now, but I'm here to help with your running goals! Could you try asking again?";
+  }
+};
   // Render onboarding
   if (currentStep === 'onboarding') {
     const question = onboardingQuestions[currentQuestion];
