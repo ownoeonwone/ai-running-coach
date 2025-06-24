@@ -14,6 +14,7 @@ interface DashboardProps {
       email?: string | null;
       image?: string | null;
     };
+    accessToken?: string;
   };
   onSignOut?: () => void;
 }
@@ -125,23 +126,27 @@ useEffect(() => {
 // ADD THIS NEW useEffect RIGHT HERE:
 useEffect(() => {
   const fetchStravaData = async () => {
-    if (session?.accessToken && currentStep === 'dashboard') {
+    const accessToken = (session as any)?.accessToken;
+    if (accessToken && currentStep === 'dashboard') {
       try {
-        const response = await fetch(`/api/strava/activities?accessToken=${session.accessToken}`);
+        const response = await fetch(`/api/strava/activities?accessToken=${accessToken}`);
         const data = await response.json();
-        
+    
         if (data.runs) {
           setRecentActivities(data.runs);
-          
+      
           // Auto-analyze recent runs that haven't been analyzed
           const unanalyzedRuns = data.runs.filter((run: any) => !run.isAnalyzed);
           analyzeActivities(onboardingData, unanalyzedRuns);
         }
       } catch (error) {
-        console.error('Failed to fetch Strava data:', error);
+        console.error('Failed to fetch Strava data:', error); 
       }
     }
   };
+    
+  fetchStravaData();
+}, [session, currentStep, onboardingData]);
 
   fetchStravaData();
 }, [session?.accessToken, currentStep, onboardingData]);
