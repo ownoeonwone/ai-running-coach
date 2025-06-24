@@ -221,7 +221,7 @@ useEffect(() => {
     }
   };
 // Add this function BEFORE handleOnboardingAnswer
-const analyzeActivities = async (onboardingData: typeof onboardingData, activities: any[]) => {
+const analyzeActivities = async (onboardingData: any, activities: any[]) => {
   for (const activity of activities) {
     try {
       const response = await fetch('/api/ai-coach/analyze-activity', {
