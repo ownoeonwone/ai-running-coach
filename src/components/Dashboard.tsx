@@ -1,18 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Activity, Trophy, Calendar, TrendingUp, Target, MessageCircle, BarChart3, ChevronRight } from 'lucide-react';
+import { Activity, Trophy, Calendar, TrendingUp, Target, MessageCircle, BarChart3, ChevronRight, Loader } from 'lucide-react';
 
 interface DashboardProps {
-  session?: any;
+  session?: {
+    user?: {
+      name?: string;
+      email?: string;
+    };
+  };
   onSignOut?: () => void;
 }
 
-const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
+const CompleteGPT4RunningCoach = ({ session, onSignOut }: DashboardProps) => {
   const [currentStep, setCurrentStep] = useState('onboarding');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoading, setIsLoading] = useState(false);
   
   // Onboarding state
   const [onboardingData, setOnboardingData] = useState({
@@ -22,31 +27,26 @@ const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
     raceDate: '',
     runningDays: '',
     timeAvailable: '',
-    injuryHistory: ''
+    injuryHistory: '',
+    previousExperience: '',
+    preferredRunningTime: '',
+    motivations: ''
   });
 
   // User profile state
   const [userProfile, setUserProfile] = useState({
     name: session?.user?.name?.split(' ')[0] || 'Runner',
     isOnboarded: false,
-    currentGoal: 'Marathon Training',
-    weeklyMiles: 35,
-    targetWeeklyMiles: 40,
-    nextRace: 'Boston Marathon',
-    raceDate: '2025-04-21'
+    currentGoal: '',
+    weeklyMiles: 0,
+    targetWeeklyMiles: 0,
+    nextRace: '',
+    raceDate: '',
+    personalizedPlan: null as any
   });
 
-  // Check if user has completed onboarding
-  useEffect(() => {
-    const isOnboarded = localStorage.getItem('aicoach_onboarded');
-    if (isOnboarded) {
-      setCurrentStep('dashboard');
-      setUserProfile(prev => ({ ...prev, isOnboarded: true }));
-    }
-  }, []);
-
-  // Mock training data
-  const [recentActivities] = useState([
+  // Training data state
+  const [recentActivities, setRecentActivities] = useState([
     {
       id: 1,
       distance: 8.2,
@@ -55,7 +55,11 @@ const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
       date: '2025-06-23',
       route: 'Morning Loop',
       heartRate: 165,
-      coachFeedback: "Excellent work! This run shows you're building a solid aerobic base. Your pacing was wonderfully consistent - exactly what we want to see in base training runs."
+      effort: 'Medium',
+      elevation: 245,
+      weather: 'Cool, 52°F',
+      coachFeedback: '',
+      isAnalyzed: false
     },
     {
       id: 2,
@@ -65,21 +69,19 @@ const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
       date: '2025-06-21',
       route: 'Long Run Trail',
       heartRate: 158,
-      coachFeedback: "This long run was textbook perfect! You showed great discipline keeping it easy, and that negative split tells me your fitness is progressing beautifully."
+      effort: 'Easy',
+      elevation: 890,
+      weather: 'Warm, 68°F',
+      coachFeedback: '',
+      isAnalyzed: false
     }
   ]);
 
-  const [trainingPlan] = useState({
-    week: 'Week 8 of 16',
-    runs: [
-      { day: 'Monday', type: 'Rest', distance: 0 },
-      { day: 'Tuesday', type: 'Tempo', distance: 6, description: '3x1 mile @ marathon pace' },
-      { day: 'Wednesday', type: 'Easy', distance: 4, description: 'Recovery run, keep it conversational' },
-      { day: 'Thursday', type: 'Intervals', distance: 7, description: '6x800m @ 5K pace' },
-      { day: 'Friday', type: 'Rest', distance: 0 },
-      { day: 'Saturday', type: 'Long', distance: 14, description: 'Progressive long run, last 3 miles @ marathon pace' },
-      { day: 'Sunday', type: 'Easy', distance: 5, description: 'Easy shakeout run' }
-    ]
+  const [trainingPlan, setTrainingPlan] = useState({
+    week: 'Loading...',
+    phase: 'Analyzing your profile...',
+    runs: [] as any[],
+    isGenerated: false
   });
 
   // AI Chat state
@@ -87,64 +89,93 @@ const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
   const [chatMessages, setChatMessages] = useState([
     {
       sender: 'coach',
-      message: `Hi ${userProfile.name}! I'm your AI running coach. I've analyzed your recent Strava activities and I'm excited to help you reach your goals! How are you feeling about your training so far?`,
-      timestamp: new Date()
+      message: `Hi ${userProfile.name}! I'm your AI running coach powered by advanced analysis. I'm here to help you reach your running goals with personalized advice based on the latest running science. What would you like to know about your training?`,
+      timestamp: new Date(),
+      isTyping: false
     }
   ]);
+
+  // Check if user has completed onboarding
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('aicoach_profile');
+    const savedOnboarding = localStorage.getItem('aicoach_onboarding');
+    
+    if (savedProfile && savedOnboarding) {
+      setUserProfile(JSON.parse(savedProfile));
+      setOnboardingData(JSON.parse(savedOnboarding));
+      setCurrentStep('dashboard');
+    }
+  }, []);
 
   // Onboarding questions
   const onboardingQuestions = [
     {
       id: 'fitnessLevel',
-      question: 'What\'s your current fitness level?',
+      question: 'What\'s your current running fitness level?',
       type: 'select',
-      options: ['Beginner (0-1 year)', 'Intermediate (1-3 years)', 'Advanced (3-5 years)', 'Elite (5+ years)']
+      options: ['Complete Beginner (Never run regularly)', 'Beginner (0-6 months)', 'Novice (6 months - 2 years)', 'Intermediate (2-5 years)', 'Advanced (5+ years)', 'Competitive/Elite']
     },
     {
       id: 'weeklyMiles',
       question: 'How many miles do you currently run per week?',
       type: 'select',
-      options: ['0-10 miles', '10-20 miles', '20-30 miles', '30-40 miles', '40-50 miles', '50+ miles']
+      options: ['0-5 miles', '5-15 miles', '15-25 miles', '25-35 miles', '35-50 miles', '50-70 miles', '70+ miles']
     },
     {
       id: 'primaryGoal',
-      question: 'What\'s your primary running goal?',
+      question: 'What\'s your primary running goal for the next 6-12 months?',
       type: 'select',
-      options: ['5K', '10K', 'Half Marathon', 'Marathon', 'Ultra Marathon', 'General Fitness', 'Weight Loss']
+      options: ['Complete my first 5K', 'Improve 5K time', 'Complete my first 10K', 'Improve 10K time', 'Complete my first half marathon', 'Improve half marathon time', 'Complete my first marathon', 'Improve marathon time', 'Ultra marathon', 'General fitness and health', 'Weight loss', 'Stay injury-free']
     },
     {
       id: 'raceDate',
-      question: 'When is your target race? (if applicable)',
-      type: 'date'
+      question: 'Do you have a target race date? (Optional)',
+      type: 'date',
+      optional: true
     },
     {
       id: 'runningDays',
-      question: 'How many days per week can you run?',
+      question: 'How many days per week can you realistically commit to running?',
       type: 'select',
-      options: ['3 days', '4 days', '5 days', '6 days', '7 days']
+      options: ['2-3 days', '3-4 days', '4-5 days', '5-6 days', '6-7 days', 'Every day']
     },
     {
       id: 'timeAvailable',
-      question: 'How much time can you dedicate to running each day?',
+      question: 'How much time can you typically dedicate to each run?',
       type: 'select',
-      options: ['30 minutes', '45 minutes', '1 hour', '1.5 hours', '2+ hours']
+      options: ['20-30 minutes', '30-45 minutes', '45-60 minutes', '60-90 minutes', '90+ minutes', 'Varies by day']
     },
     {
       id: 'injuryHistory',
-      question: 'Do you have any injury history or concerns?',
-      type: 'textarea'
+      question: 'Do you have any current injuries, past injury concerns, or physical limitations?',
+      type: 'textarea',
+      placeholder: 'e.g., Previous knee injury, tight IT band, no injuries, etc.'
     }
   ];
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
 
-  const handleOnboardingNext = () => {
+  const handleOnboardingNext = async () => {
     if (currentQuestion < onboardingQuestions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      localStorage.setItem('aicoach_onboarded', 'true');
+      setIsLoading(true);
+      
+      const newProfile = {
+        ...userProfile,
+        isOnboarded: true,
+        currentGoal: onboardingData.primaryGoal,
+        weeklyMiles: parseInt(onboardingData.weeklyMiles.split('-')[0]) || 0,
+        targetWeeklyMiles: parseInt(onboardingData.weeklyMiles.split('-')[1]) || 0,
+        raceDate: onboardingData.raceDate
+      };
+      
+      setUserProfile(newProfile);
+      localStorage.setItem('aicoach_profile', JSON.stringify(newProfile));
+      localStorage.setItem('aicoach_onboarding', JSON.stringify(onboardingData));
+      
       setCurrentStep('dashboard');
-      setUserProfile(prev => ({ ...prev, isOnboarded: true }));
+      setIsLoading(false);
     }
   };
 
@@ -153,97 +184,79 @@ const CompleteRunningCoach = ({ session, onSignOut }: DashboardProps) => {
     setOnboardingData(prev => ({ ...prev, [questionId]: value }));
   };
 
-const handleSendMessage = async () => {
-  if (!chatInput.trim()) return;
-  
-  const newMessage = {
-    sender: 'user',
-    message: chatInput,
-    timestamp: new Date(),
-    isTyping: false
+  const generateAIResponse = async (input: string) => {
+    try {
+      const response = await fetch('/api/ai-coach/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: input,
+          userProfile,
+          recentActivities,
+          onboardingData,
+          trainingPlan
+        }),
+      });
+
+      const data = await response.json();
+      return data.response || "I'm here to help with your running! Could you tell me more?";
+    } catch (error) {
+      console.error('AI Coach error:', error);
+      return "I'm having trouble connecting right now, but I'm here to help with your running goals! Could you try asking again?";
+    }
   };
-  
-  setChatMessages(prev => [...prev, newMessage]);
-  const currentInput = chatInput;
-  setChatInput('');
-  
-  // Add typing indicator
-  setChatMessages(prev => [...prev, {
-    sender: 'coach',
-    message: '',
-    timestamp: new Date(),
-    isTyping: true
-  }]);
-  
-  try {
-    const aiResponse = await generateAIResponse(currentInput);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
     
-    // Replace typing indicator with actual response
-    setChatMessages(prev => [
-      ...prev.slice(0, -1),
-      {
-        sender: 'coach',
-        message: aiResponse,
-        timestamp: new Date(),
-        isTyping: false
-      }
-    ]);
-  } catch (error) {
-    console.error('Chat error:', error);
-    setChatMessages(prev => [
-      ...prev.slice(0, -1),
-      {
-        sender: 'coach',
-        message: "I'm having trouble connecting right now. Please try again in a moment!",
-        timestamp: new Date(),
-        isTyping: false
-      }
-    ]);
-  }
-};    
     const newMessage = {
       sender: 'user',
       message: chatInput,
-      timestamp: new Date()
+      timestamp: new Date(),
+      isTyping: false
     };
     
-    setChatMessages([...chatMessages, newMessage]);
-    
-    setTimeout(() => {
-const aiResponse = await generateAIResponse();
-      setChatMessages(prev => [...prev, {
-        sender: 'coach',
-        message: aiResponse,
-        timestamp: new Date()
-      }]);
-    }, 1000);
-    
+    setChatMessages(prev => [...prev, newMessage]);
+    const currentInput = chatInput;
     setChatInput('');
+    
+    // Add typing indicator
+    setChatMessages(prev => [...prev, {
+      sender: 'coach',
+      message: '',
+      timestamp: new Date(),
+      isTyping: true
+    }]);
+    
+    try {
+      const aiResponse = await generateAIResponse(currentInput);
+      
+      // Replace typing indicator with actual response
+      setChatMessages(prev => [
+        ...prev.slice(0, -1),
+        {
+          sender: 'coach',
+          message: aiResponse,
+          timestamp: new Date(),
+          isTyping: false
+        }
+      ]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      setChatMessages(prev => [
+        ...prev.slice(0, -1),
+        {
+          sender: 'coach',
+          message: "I'm having trouble connecting right now. Please try again in a moment!",
+          timestamp: new Date(),
+          isTyping: false
+        }
+      ]);
+    }
   };
 
-const generateAIResponse = async (input: string) => {
-  try {
-    const response = await fetch('/api/ai-coach/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: input,
-        userProfile,
-        recentActivities,
-        onboardingData,
-        trainingPlan
-      }),
-    });
-
-    const data = await response.json();
-    return data.response || "I'm here to help with your running! Could you tell me more?";
-  } catch (error) {
-    console.error('AI Coach error:', error);
-    return "I'm having trouble connecting right now, but I'm here to help with your running goals! Could you try asking again?";
-  }
-};
   // Render onboarding
   if (currentStep === 'onboarding') {
     const question = onboardingQuestions[currentQuestion];
@@ -251,74 +264,84 @@ const generateAIResponse = async (input: string) => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-lg w-full">
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-gray-900">🏃‍♂️ AI Running Coach</h1>
-              <span className="text-sm text-gray-500">{currentQuestion + 1} of {onboardingQuestions.length}</span>
+          {isLoading ? (
+            <div className="text-center py-8">
+              <Loader className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
+              <h2 className="text-xl font-semibold mb-2">Creating Your Personalized Training Plan</h2>
+              <p className="text-gray-600">Our AI is analyzing your responses and generating a custom coaching plan just for you...</p>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
-                style={{width: `${((currentQuestion + 1) / onboardingQuestions.length) * 100}%`}}
-              ></div>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">{question.question}</h2>
-            
-            {question.type === 'select' && (
-              <div className="space-y-2">
-                {question.options?.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleOnboardingAnswer(option)}
-                    className={`w-full p-3 text-left rounded-lg border transition-colors ${
-                      onboardingData[question.id as keyof typeof onboardingData] === option
-                        ? 'bg-blue-50 border-blue-300 text-blue-700'
-                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
+          ) : (
+            <>
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h1 className="text-2xl font-bold text-gray-900">🏃‍♂️ AI Running Coach</h1>
+                  <span className="text-sm text-gray-500">{currentQuestion + 1} of {onboardingQuestions.length}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                    style={{width: `${((currentQuestion + 1) / onboardingQuestions.length) * 100}%`}}
+                  ></div>
+                </div>
               </div>
-            )}
 
-            {question.type === 'date' && (
-              <input
-                type="date"
-                onChange={(e) => handleOnboardingAnswer(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            )}
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">{question.question}</h2>
+                
+                {question.type === 'select' && (
+                  <div className="space-y-2">
+                    {question.options?.map((option, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleOnboardingAnswer(option)}
+                        className={`w-full p-3 text-left rounded-lg border transition-colors ${
+                          onboardingData[question.id as keyof typeof onboardingData] === option
+                            ? 'bg-blue-50 border-blue-300 text-blue-700'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-            {question.type === 'textarea' && (
-              <textarea
-                onChange={(e) => handleOnboardingAnswer(e.target.value)}
-                placeholder="Tell us about any injuries or concerns..."
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none"
-              />
-            )}
-          </div>
+                {question.type === 'date' && (
+                  <input
+                    type="date"
+                    onChange={(e) => handleOnboardingAnswer(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
 
-          <div className="flex gap-3">
-            {currentQuestion > 0 && (
-              <button
-                onClick={() => setCurrentQuestion(currentQuestion - 1)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                Previous
-              </button>
-            )}
-            <button
-              onClick={handleOnboardingNext}
-              disabled={!onboardingData[question.id as keyof typeof onboardingData]}
-              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {currentQuestion === onboardingQuestions.length - 1 ? 'Complete Setup' : 'Next'}
-            </button>
-          </div>
+                {question.type === 'textarea' && (
+                  <textarea
+                    onChange={(e) => handleOnboardingAnswer(e.target.value)}
+                    placeholder={question.placeholder}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 resize-none"
+                  />
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                {currentQuestion > 0 && (
+                  <button
+                    onClick={() => setCurrentQuestion(currentQuestion - 1)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                )}
+                <button
+                  onClick={handleOnboardingNext}
+                  disabled={!onboardingData[question.id as keyof typeof onboardingData] && !question.optional}
+                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {currentQuestion === onboardingQuestions.length - 1 ? 'Generate My Plan' : 'Next'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -331,7 +354,7 @@ const generateAIResponse = async (input: string) => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold mb-2">Welcome back, {userProfile.name}! 🏃‍♂️</h1>
-            <p className="text-blue-100">Your AI Running Coach is ready to help you achieve your goals!</p>
+            <p className="text-blue-100">Your AI coach has analyzed your profile!</p>
           </div>
           <button 
             onClick={onSignOut}
@@ -350,21 +373,14 @@ const generateAIResponse = async (input: string) => {
           </div>
           <div className="text-2xl font-bold text-gray-900">{userProfile.weeklyMiles}</div>
           <div className="text-sm text-gray-500">of {userProfile.targetWeeklyMiles} miles</div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div 
-              className="bg-green-500 h-2 rounded-full" 
-              style={{width: `${(userProfile.weeklyMiles / userProfile.targetWeeklyMiles) * 100}%`}}
-            ></div>
-          </div>
         </div>
 
         <div className="bg-white rounded-lg p-4 border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold text-gray-700">Next Race</h3>
+            <h3 className="font-semibold text-gray-700">Primary Goal</h3>
             <Trophy className="h-5 w-5 text-yellow-500" />
           </div>
-          <div className="text-lg font-bold text-gray-900">{userProfile.nextRace}</div>
-          <div className="text-sm text-gray-500">{userProfile.raceDate}</div>
+          <div className="text-lg font-bold text-gray-900">{userProfile.currentGoal || 'Setting up...'}</div>
         </div>
 
         <div className="bg-white rounded-lg p-4 border border-gray-200">
@@ -373,13 +389,12 @@ const generateAIResponse = async (input: string) => {
             <Target className="h-5 w-5 text-blue-500" />
           </div>
           <div className="text-lg font-bold text-gray-900">{trainingPlan.week}</div>
-          <div className="text-sm text-gray-500">Base Building</div>
         </div>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <h2 className="font-bold text-gray-900">Recent Activities</h2>
+          <h2 className="font-bold text-gray-900">Recent Activities & AI Analysis</h2>
         </div>
         <div className="divide-y divide-gray-200">
           {recentActivities.map((activity) => (
@@ -410,8 +425,8 @@ const generateAIResponse = async (input: string) => {
                     </div>
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r">
-                    <div className="text-sm font-medium text-blue-800 mb-1">Coach Analysis:</div>
-                    <div className="text-sm text-blue-700">{activity.coachFeedback}</div>
+                    <div className="text-sm font-medium text-blue-800 mb-1">AI Coach Analysis:</div>
+                    <div className="text-sm text-blue-700">Great job on this run! Your pacing and effort level show good fitness development.</div>
                   </div>
                 </div>
               </div>
@@ -426,35 +441,12 @@ const generateAIResponse = async (input: string) => {
     <div className="space-y-6">
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <h2 className="font-bold text-gray-900">Training Plan - {trainingPlan.week}</h2>
-          <p className="text-gray-600">Marathon Training • Based on your onboarding responses</p>
+          <h2 className="font-bold text-gray-900">AI-Generated Training Plan</h2>
+          <p className="text-gray-600">{userProfile.currentGoal} • Personalized for your fitness level</p>
         </div>
-        <div className="divide-y divide-gray-200">
-          {trainingPlan.runs.map((run, index) => (
-            <div key={index} className="p-4 flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="font-semibold text-gray-900">{run.day}</div>
-                  <div className={`px-2 py-1 rounded text-xs font-medium ${
-                    run.type === 'Rest' ? 'bg-gray-100 text-gray-600' :
-                    run.type === 'Easy' ? 'bg-green-100 text-green-700' :
-                    run.type === 'Long' ? 'bg-blue-100 text-blue-700' :
-                    run.type === 'Tempo' ? 'bg-orange-100 text-orange-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {run.type}
-                  </div>
-                  {run.distance > 0 && (
-                    <div className="text-gray-600">{run.distance} miles</div>
-                  )}
-                </div>
-                {run.description && (
-                  <div className="text-sm text-gray-500 mt-1">{run.description}</div>
-                )}
-              </div>
-              <ChevronRight className="h-5 w-5 text-gray-400" />
-            </div>
-          ))}
+        <div className="p-8 text-center">
+          <Loader className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className="text-gray-600">Generating your personalized training plan...</p>
         </div>
       </div>
     </div>
@@ -464,6 +456,7 @@ const generateAIResponse = async (input: string) => {
     <div className="bg-white rounded-lg border border-gray-200 h-96 flex flex-col">
       <div className="p-4 border-b border-gray-200">
         <h2 className="font-bold text-gray-900">Chat with Your AI Coach</h2>
+        <p className="text-sm text-gray-500">Powered by GPT-4 • Ask about training, nutrition, or race strategy</p>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {chatMessages.map((msg, index) => (
@@ -473,7 +466,14 @@ const generateAIResponse = async (input: string) => {
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-900'
             }`}>
-              {msg.message}
+              {msg.isTyping ? (
+                <div className="flex items-center gap-2">
+                  <Loader className="h-4 w-4 animate-spin" />
+                  <span>Thinking...</span>
+                </div>
+              ) : (
+                msg.message
+              )}
             </div>
           </div>
         ))}
@@ -485,12 +485,13 @@ const generateAIResponse = async (input: string) => {
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder="Ask your coach anything..."
+            placeholder="Ask about training, nutrition, recovery, race strategy..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             onClick={handleSendMessage}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={!chatInput.trim()}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
             Send
           </button>
@@ -506,6 +507,7 @@ const generateAIResponse = async (input: string) => {
           <div className="flex items-center gap-2">
             <Activity className="h-8 w-8 text-blue-500" />
             <h1 className="text-xl font-bold text-gray-900">AI Running Coach</h1>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Powered by GPT-4</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -548,4 +550,4 @@ const generateAIResponse = async (input: string) => {
   );
 };
 
-export default CompleteRunningCoach;
+export default CompleteGPT4RunningCoach;
