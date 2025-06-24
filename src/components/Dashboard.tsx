@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 'use client'
-/* eslint-disable @typescript-eslint/no-explicit-any */
-'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Activity, Trophy, Calendar, TrendingUp, Target, MessageCircle, BarChart3, Loader } from 'lucide-react';
+import { Activity, Trophy, Calendar, TrendingUp, Target, MessageCircle, BarChart3, Loader, X, Heart, Thermometer, Cloud, Mountain, Clock, Send } from 'lucide-react';
 
 interface DashboardProps {
   session?: {
@@ -23,10 +21,10 @@ const CompleteGPT4RunningCoach = ({ session, onSignOut }: DashboardProps) => {
   const [currentStep, setCurrentStep] = useState('onboarding');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(false);
-const [selectedRun, setSelectedRun] = useState(null);
-const [showRunDetail, setShowRunDetail] = useState(false);
-const [runChatMessages, setRunChatMessages] = useState([]);
-const [runChatInput, setRunChatInput] = useState('');
+  const [selectedRun, setSelectedRun] = useState<any>(null);
+  const [showRunDetail, setShowRunDetail] = useState(false);
+  const [runChatMessages, setRunChatMessages] = useState<any[]>([]);
+  const [runChatInput, setRunChatInput] = useState('');
   
   // Onboarding state
   const [onboardingData, setOnboardingData] = useState({
@@ -68,7 +66,27 @@ const [recentActivities, setRecentActivities] = useState([
       elevation: 245,
       weather: 'Cool, 52°F',
       coachFeedback: '',
-      isAnalyzed: false
+      isAnalyzed: false,
+      // Additional Strava metrics
+      calories: 650,
+      averageSpeed: 11.6,
+      maxHeartRate: 178,
+      temperature: 52,
+      humidity: 65,
+      splits: [
+        { mile: 1, time: '5:02', elevation: 15 },
+        { mile: 2, time: '5:08', elevation: 25 },
+        { mile: 3, time: '5:15', elevation: 35 },
+        { mile: 4, time: '5:12', elevation: 20 },
+        { mile: 5, time: '5:18', elevation: 30 },
+        { mile: 6, time: '5:05', elevation: 18 },
+        { mile: 7, time: '5:10', elevation: 28 },
+        { mile: 8, time: '5:06', elevation: 22 }
+      ],
+      startTime: '06:30 AM',
+      endTime: '07:12 AM',
+      averageCadence: 174,
+      totalStrides: 7344
     },
     {
       id: 2,
@@ -82,7 +100,30 @@ const [recentActivities, setRecentActivities] = useState([
       elevation: 890,
       weather: 'Warm, 68°F',
       coachFeedback: '',
-      isAnalyzed: false
+      isAnalyzed: false,
+      calories: 950,
+      averageSpeed: 11.0,
+      maxHeartRate: 168,
+      temperature: 68,
+      humidity: 72,
+      splits: [
+        { mile: 1, time: '5:20', elevation: 45 },
+        { mile: 2, time: '5:25', elevation: 65 },
+        { mile: 3, time: '5:30', elevation: 85 },
+        { mile: 4, time: '5:35', elevation: 95 },
+        { mile: 5, time: '5:28', elevation: 75 },
+        { mile: 6, time: '5:32', elevation: 88 },
+        { mile: 7, time: '5:25', elevation: 70 },
+        { mile: 8, time: '5:22', elevation: 55 },
+        { mile: 9, time: '5:30', elevation: 80 },
+        { mile: 10, time: '5:28', elevation: 65 },
+        { mile: 11, time: '5:24', elevation: 58 },
+        { mile: 12, time: '5:18', elevation: 42 }
+      ],
+      startTime: '07:00 AM',
+      endTime: '08:05 AM',
+      averageCadence: 168,
+      totalStrides: 11040
     }
   ]);
 
@@ -115,17 +156,6 @@ const [trainingPlan] = useState({
       setCurrentStep('dashboard');
     }
   }, []);
-// Check if user has completed onboarding
-useEffect(() => {
-  const savedProfile = localStorage.getItem('aicoach_profile');
-  const savedOnboarding = localStorage.getItem('aicoach_onboarding');
-  
-  if (savedProfile && savedOnboarding) {
-    setUserProfile(JSON.parse(savedProfile));
-    setOnboardingData(JSON.parse(savedOnboarding));
-    setCurrentStep('dashboard');
-  }
-}, []);
 
 // ADD THIS NEW useEffect RIGHT HERE:
 useEffect(() => {
@@ -152,6 +182,115 @@ useEffect(() => {
   fetchStravaData();
 }, [session, currentStep, onboardingData]);
 
+  // Function to open run detail modal
+  const openRunDetail = (run: any) => {
+    setSelectedRun(run);
+    setShowRunDetail(true);
+    
+    // Initialize chat for this run if not already done
+    const runChatKey = `run_chat_${run.id}`;
+    const savedChat = localStorage.getItem(runChatKey);
+    
+    if (savedChat) {
+      setRunChatMessages(JSON.parse(savedChat));
+    } else {
+      // Start with a personalized welcome message for this specific run
+      const initialMessage = {
+        sender: 'coach',
+        message: `Let's talk about your ${run.route} run from ${run.date}! I can see you covered ${run.distance} miles at a ${run.pace} pace. What would you like to discuss about this workout?`,
+        timestamp: new Date(),
+        isTyping: false
+      };
+      setRunChatMessages([initialMessage]);
+      localStorage.setItem(runChatKey, JSON.stringify([initialMessage]));
+    }
+  };
+
+  // Function to close run detail modal
+  const closeRunDetail = () => {
+    setShowRunDetail(false);
+    setSelectedRun(null);
+    setRunChatMessages([]);
+    setRunChatInput('');
+  };
+
+  // Function to send message in run-specific chat
+  const handleRunChatSend = async () => {
+    if (!runChatInput.trim() || !selectedRun) return;
+    
+    const newMessage = {
+      sender: 'user',
+      message: runChatInput,
+      timestamp: new Date(),
+      isTyping: false
+    };
+    
+    const updatedMessages = [...runChatMessages, newMessage];
+    setRunChatMessages(updatedMessages);
+    
+    const currentInput = runChatInput;
+    setRunChatInput('');
+    
+    // Add typing indicator
+    const withTyping = [...updatedMessages, {
+      sender: 'coach',
+      message: '',
+      timestamp: new Date(),
+      isTyping: true
+    }];
+    setRunChatMessages(withTyping);
+    
+    try {
+      const response = await fetch('/api/ai-coach/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          userProfile,
+          recentActivities,
+          onboardingData,
+          trainingPlan,
+          specificRun: selectedRun, // Include the specific run data
+          context: 'run-specific-chat'
+        }),
+      });
+
+      const data = await response.json();
+      const aiResponse = data.response || "I'm here to help analyze this specific run! Could you tell me more?";
+      
+      // Replace typing indicator with actual response
+      const finalMessages = [
+        ...updatedMessages,
+        {
+          sender: 'coach',
+          message: aiResponse,
+          timestamp: new Date(),
+          isTyping: false
+        }
+      ];
+      
+      setRunChatMessages(finalMessages);
+      
+      // Save chat to localStorage
+      const runChatKey = `run_chat_${selectedRun.id}`;
+      localStorage.setItem(runChatKey, JSON.stringify(finalMessages));
+      
+    } catch (error) {
+      console.error('Run chat error:', error);
+      const errorMessages = [
+        ...updatedMessages,
+        {
+          sender: 'coach',
+          message: "I'm having trouble connecting right now. Please try again in a moment!",
+          timestamp: new Date(),
+          isTyping: false
+        }
+      ];
+      setRunChatMessages(errorMessages);
+    }
+  };
 
   // Onboarding questions
   const onboardingQuestions = [
@@ -224,6 +363,7 @@ useEffect(() => {
       setIsLoading(false);
     }
   };
+
 // Add this function BEFORE handleOnboardingAnswer
 const analyzeActivities = async (onboardingData: any, activities: any[]) => {
   for (const activity of activities) {
@@ -340,6 +480,184 @@ const analyzeActivities = async (onboardingData: any, activities: any[]) => {
         }
       ]);
     }
+  };
+
+  // Render Run Detail Modal
+  const renderRunDetailModal = () => {
+    if (!showRunDetail || !selectedRun) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-green-600 text-white p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">{selectedRun.route}</h2>
+                <p className="text-blue-100">{selectedRun.date} • {selectedRun.startTime} - {selectedRun.endTime}</p>
+              </div>
+              <button
+                onClick={closeRunDetail}
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex h-[calc(90vh-120px)]">
+            {/* Left Panel - Run Details */}
+            <div className="w-1/2 p-6 overflow-y-auto border-r border-gray-200">
+              {/* Key Metrics */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="h-5 w-5 text-blue-600" />
+                    <span className="font-semibold text-blue-800">Distance</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-900">{selectedRun.distance} mi</div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-5 w-5 text-green-600" />
+                    <span className="font-semibold text-green-800">Duration</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-900">{selectedRun.duration}</div>
+                </div>
+
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-5 w-5 text-orange-600" />
+                    <span className="font-semibold text-orange-800">Avg Pace</span>
+                  </div>
+                  <div className="text-2xl font-bold text-orange-900">{selectedRun.pace}/mi</div>
+                </div>
+
+                <div className="bg-red-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart className="h-5 w-5 text-red-600" />
+                    <span className="font-semibold text-red-800">Avg HR</span>
+                  </div>
+                  <div className="text-2xl font-bold text-red-900">{selectedRun.heartRate} bpm</div>
+                </div>
+              </div>
+
+              {/* Additional Metrics */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-sm text-gray-600">Max Heart Rate</div>
+                  <div className="text-lg font-semibold">{selectedRun.maxHeartRate} bpm</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-sm text-gray-600">Calories</div>
+                  <div className="text-lg font-semibold">{selectedRun.calories}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center gap-1">
+                    <Mountain className="h-4 w-4 text-gray-600" />
+                    <span className="text-sm text-gray-600">Elevation</span>
+                  </div>
+                  <div className="text-lg font-semibold">{selectedRun.elevation} ft</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-sm text-gray-600">Avg Cadence</div>
+                  <div className="text-lg font-semibold">{selectedRun.averageCadence} spm</div>
+                </div>
+              </div>
+
+              {/* Weather */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Cloud className="h-5 w-5" />
+                  Weather Conditions
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Thermometer className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm text-gray-600">Temperature</span>
+                      </div>
+                      <div className="font-semibold">{selectedRun.temperature}°F</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Humidity</div>
+                      <div className="font-semibold">{selectedRun.humidity}%</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Splits */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Mile Splits</h3>
+                <div className="space-y-2">
+                  {selectedRun.splits?.map((split: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <span className="font-medium">Mile {split.mile}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-600">+{split.elevation}ft</span>
+                        <span className="font-semibold">{split.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Panel - AI Chat */}
+            <div className="w-1/2 flex flex-col">
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <h3 className="font-semibold text-gray-900">Chat About This Run</h3>
+                <p className="text-sm text-gray-600">Discuss this specific workout with your AI coach</p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {runChatMessages.map((msg, index) => (
+                  <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-xs px-4 py-2 rounded-lg ${
+                      msg.sender === 'user' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-100 text-gray-900'
+                    }`}>
+                      {msg.isTyping ? (
+                        <div className="flex items-center gap-2">
+                          <Loader className="h-4 w-4 animate-spin" />
+                          <span>Analyzing...</span>
+                        </div>
+                      ) : (
+                        msg.message
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 border-t border-gray-200">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={runChatInput}
+                    onChange={(e) => setRunChatInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleRunChatSend()}
+                    placeholder="Ask about pacing, form, effort level..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={handleRunChatSend}
+                    disabled={!runChatInput.trim()}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Render onboarding
@@ -480,16 +798,22 @@ const analyzeActivities = async (onboardingData: any, activities: any[]) => {
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-4 border-b border-gray-200">
           <h2 className="font-bold text-gray-900">Recent Activities & AI Analysis</h2>
+          <p className="text-sm text-gray-600">Click on any run to view detailed metrics and chat with your AI coach</p>
         </div>
         <div className="divide-y divide-gray-200">
           {recentActivities.map((activity) => (
-            <div key={activity.id} className="p-4">
+            <div 
+              key={activity.id} 
+              className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+              onClick={() => openRunDetail(activity)}
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <Activity className="h-5 w-5 text-orange-500" />
                     <span className="font-semibold">{activity.route}</span>
                     <span className="text-sm text-gray-500">{activity.date}</span>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Click to view details</span>
                   </div>
                   <div className="grid grid-cols-4 gap-4 text-sm mb-3">
                     <div>
@@ -511,7 +835,9 @@ const analyzeActivities = async (onboardingData: any, activities: any[]) => {
                   </div>
                   <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r">
                     <div className="text-sm font-medium text-blue-800 mb-1">AI Coach Analysis:</div>
-                    <div className="text-sm text-blue-700">Great job on this run! Your pacing and effort level show good fitness development.</div>
+                    <div className="text-sm text-blue-700">
+                      {activity.coachFeedback || "Great job on this run! Your pacing and effort level show good fitness development."}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -631,6 +957,9 @@ const analyzeActivities = async (onboardingData: any, activities: any[]) => {
         {activeTab === 'training' && renderTrainingPlan()}
         {activeTab === 'chat' && renderAIChat()}
       </div>
+
+      {/* Render the modal */}
+      {renderRunDetailModal()}
     </div>
   );
 };
