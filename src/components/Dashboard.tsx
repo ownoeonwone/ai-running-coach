@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
+'use client'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -141,7 +144,7 @@ useEffect(() => {
   };
 
   fetchStravaData();
-}, [session?.accessToken, currentStep]);
+}, [session?.accessToken, currentStep, onboardingData]);
 
   // Onboarding questions
   const onboardingQuestions = [
