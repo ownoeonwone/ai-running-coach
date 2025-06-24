@@ -7,8 +7,9 @@ import { Activity, Trophy, Calendar, TrendingUp, Target, MessageCircle, BarChart
 interface DashboardProps {
   session?: {
     user?: {
-      name?: string;
-      email?: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
     };
   };
   onSignOut?: () => void;
