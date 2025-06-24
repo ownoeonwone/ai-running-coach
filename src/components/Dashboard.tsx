@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Activity, Trophy, Calendar, TrendingUp, Target, MessageCircle, BarChart3, ChevronRight, Loader } from 'lucide-react';
+import { Activity, Trophy, Calendar, TrendingUp, Target, MessageCircle, BarChart3, Loader } from 'lucide-react';
 
 interface DashboardProps {
   session?: {
@@ -46,7 +46,7 @@ const CompleteGPT4RunningCoach = ({ session, onSignOut }: DashboardProps) => {
   });
 
   // Training data state
-  const [recentActivities, setRecentActivities] = useState([
+const [recentActivities] = useState([
     {
       id: 1,
       distance: 8.2,
@@ -77,7 +77,7 @@ const CompleteGPT4RunningCoach = ({ session, onSignOut }: DashboardProps) => {
     }
   ]);
 
-  const [trainingPlan, setTrainingPlan] = useState({
+const [trainingPlan] = useState({
     week: 'Loading...',
     phase: 'Analyzing your profile...',
     runs: [] as any[],
