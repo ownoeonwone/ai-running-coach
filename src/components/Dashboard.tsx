@@ -47,7 +47,7 @@ const CompleteGPT4RunningCoach = ({ session, onSignOut }: DashboardProps) => {
   });
 
   // Training data state
-const [recentActivities] = useState([
+const [recentActivities, setRecentActivities] = useState([
     {
       id: 1,
       distance: 8.2,
@@ -107,6 +107,41 @@ const [trainingPlan] = useState({
       setCurrentStep('dashboard');
     }
   }, []);
+// Check if user has completed onboarding
+useEffect(() => {
+  const savedProfile = localStorage.getItem('aicoach_profile');
+  const savedOnboarding = localStorage.getItem('aicoach_onboarding');
+  
+  if (savedProfile && savedOnboarding) {
+    setUserProfile(JSON.parse(savedProfile));
+    setOnboardingData(JSON.parse(savedOnboarding));
+    setCurrentStep('dashboard');
+  }
+}, []);
+
+// ADD THIS NEW useEffect RIGHT HERE:
+useEffect(() => {
+  const fetchStravaData = async () => {
+    if (session?.accessToken && currentStep === 'dashboard') {
+      try {
+        const response = await fetch(`/api/strava/activities?accessToken=${session.accessToken}`);
+        const data = await response.json();
+        
+        if (data.runs) {
+          setRecentActivities(data.runs);
+          
+          // Auto-analyze recent runs that haven't been analyzed
+          const unanalyzedRuns = data.runs.filter((run: any) => !run.isAnalyzed);
+          analyzeActivities(onboardingData, unanalyzedRuns);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Strava data:', error);
+      }
+    }
+  };
+
+  fetchStravaData();
+}, [session?.accessToken, currentStep]);
 
   // Onboarding questions
   const onboardingQuestions = [
@@ -179,6 +214,45 @@ const [trainingPlan] = useState({
       setIsLoading(false);
     }
   };
+// Add this function BEFORE handleOnboardingAnswer
+const analyzeActivities = async (onboardingData: typeof onboardingData, activities: any[]) => {
+  for (const activity of activities) {
+    try {
+      const response = await fetch('/api/ai-coach/analyze-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          activity,
+          onboardingData,
+          userProfile,
+          recentActivities // Pass all recent activities for trend analysis
+        })
+      });
+      
+      const result = await response.json();
+      
+      // Update the activity with AI analysis and warnings
+      setRecentActivities(prev => prev.map(act => 
+        act.id === activity.id 
+          ? { 
+              ...act, 
+              coachFeedback: result.feedback, 
+              isAnalyzed: true,
+              needsPlanAdjustment: result.needsPlanAdjustment,
+              heartRateWarning: result.heartRateWarning
+            }
+          : act
+      ));
+      
+      // Ask user about plan adjustment if needed
+      if (result.needsPlanAdjustment) {
+        console.log('Plan adjustment recommended based on recent performance');
+      }
+    } catch (error) {
+      console.error('Error analyzing activity:', error);
+    }
+  }
+};
 
   const handleOnboardingAnswer = (value: string) => {
     const questionId = onboardingQuestions[currentQuestion].id;
