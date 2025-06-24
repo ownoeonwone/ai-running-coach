@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { activity, onboardingData, userProfile } = await request.json();
+const { activity, onboardingData } = await request.json();
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",

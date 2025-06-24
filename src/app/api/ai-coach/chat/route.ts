@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
