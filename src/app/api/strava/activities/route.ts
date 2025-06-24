@@ -29,30 +29,44 @@ export async function GET(request: NextRequest) {
 
     const activities = await response.json();
     
-    // Filter for runs only and format the data
-    const runs = activities
-      .filter((activity: any) => activity.type === 'Run')
-      .map((activity: any) => ({
-        id: activity.id,
-        name: activity.name,
-        date: activity.start_date,
-        distance: (activity.distance / 1609.344), // Convert meters to miles
-        duration: formatDuration(activity.moving_time),
-        pace: calculatePace(activity.distance, activity.moving_time),
-        elevation: Math.round(activity.total_elevation_gain * 3.28084), // Convert meters to feet
-        heartRate: activity.average_heartrate,
-        maxHeartRate: activity.max_heartrate,
-        effort: activity.perceived_exertion || calculateEffortFromPace(activity.distance, activity.moving_time),
-        temperature: activity.temperature,
-        humidity: activity.humidity,
-        weather: formatWeather(activity.weather),
-        splits: activity.splits_metric,
-        kudos: activity.kudos_count,
-        description: activity.description,
-        isAnalyzed: false,
-        coachFeedback: '',
-        needsAnalysis: true
-      }));
+// Filter for runs only and format the data
+const runs = activities
+  .filter((activity: any) => activity.type === 'Run')
+  .map((activity: any) => ({
+    id: activity.id,
+    name: activity.name, // This is the Strava activity title
+    route: activity.name, // Use Strava title as route name
+    date: activity.start_date.split('T')[0], // Format date properly
+    distance: Math.round((activity.distance / 1609.344) * 100) / 100, // Round to hundredths
+    duration: formatDuration(activity.moving_time),
+    pace: calculatePace(activity.distance, activity.moving_time),
+    elevation: Math.round(activity.total_elevation_gain * 3.28084), // Convert meters to feet
+    heartRate: activity.average_heartrate ? Math.round(activity.average_heartrate) : null,
+    maxHeartRate: activity.max_heartrate ? Math.round(activity.max_heartrate) : null,
+    effort: activity.perceived_exertion || calculateEffortFromPace(activity.distance, activity.moving_time),
+    temperature: activity.temperature,
+    humidity: activity.humidity,
+    weather: formatWeather(activity.weather),
+    splits: activity.splits_metric,
+    kudos: activity.kudos_count,
+    description: activity.description,
+    isAnalyzed: false,
+    coachFeedback: '',
+    needsAnalysis: true,
+    // Add more detailed data for the detailed view
+    detailedStats: {
+      averageSpeed: Math.round((activity.average_speed * 2.237) * 100) / 100, // m/s to mph
+      maxSpeed: Math.round((activity.max_speed * 2.237) * 100) / 100,
+      calories: activity.calories,
+      sufferScore: activity.suffer_score,
+      startLatlng: activity.start_latlng,
+      endLatlng: activity.end_latlng,
+      achievementCount: activity.achievement_count,
+      prCount: activity.pr_count,
+      workoutType: activity.workout_type
+    }
+  }))
+  .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort newest first
 
     return NextResponse.json({ runs });
   } catch (error) {

@@ -23,6 +23,10 @@ const CompleteGPT4RunningCoach = ({ session, onSignOut }: DashboardProps) => {
   const [currentStep, setCurrentStep] = useState('onboarding');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(false);
+const [selectedRun, setSelectedRun] = useState(null);
+const [showRunDetail, setShowRunDetail] = useState(false);
+const [runChatMessages, setRunChatMessages] = useState([]);
+const [runChatInput, setRunChatInput] = useState('');
   
   // Onboarding state
   const [onboardingData, setOnboardingData] = useState({
