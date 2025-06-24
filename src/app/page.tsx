@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import { useSession, signIn, signOut } from 'next-auth/react'
@@ -18,7 +19,7 @@ export default function Home() {
   }
 
   if (session) {
-    return <Dashboard session={session} onSignOut={() => signOut()} />
+return <Dashboard session={session as any} onSignOut={() => signOut()} />
   }
 
   return (
