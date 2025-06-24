@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
@@ -44,13 +43,20 @@ Provide 7 days (Monday through Sunday) with realistic distances and descriptions
           role: "user",
           content: `Create a training plan for week ${currentWeek || 1}:
 
-Goal: ${onboardingData?.primaryGoal || 'General fitness'}
-Current fitness: ${onboardingData?.fitnessLevel || 'Beginner'}
-Weekly miles: ${onboardingData?.weeklyMiles || '10-20 miles'}
-Available days: ${onboardingData?.runningDays || '4 days'}
-Time per session: ${onboardingData?.timeAvailable || '45 minutes'}
-Race date: ${onboardingData?.raceDate || 'None specified'}
-Injury history: ${onboardingData?.injuryHistory || 'None'}
+Runner Profile:
+- Name: ${userProfile?.name || 'Runner'}
+- Current Goal: ${userProfile?.currentGoal || onboardingData?.primaryGoal || 'General fitness'}
+- Current Weekly Miles: ${userProfile?.weeklyMiles || 'Unknown'}
+- Target Weekly Miles: ${userProfile?.targetWeeklyMiles || 'Unknown'}
+
+Training Preferences:
+- Goal: ${onboardingData?.primaryGoal || 'General fitness'}
+- Current fitness: ${onboardingData?.fitnessLevel || 'Beginner'}
+- Weekly miles: ${onboardingData?.weeklyMiles || '10-20 miles'}
+- Available days: ${onboardingData?.runningDays || '4 days'}
+- Time per session: ${onboardingData?.timeAvailable || '45 minutes'}
+- Race date: ${onboardingData?.raceDate || 'None specified'}
+- Injury history: ${onboardingData?.injuryHistory || 'None'}
 
 Create a safe, progressive weekly plan appropriate for their fitness level and goals.`
         }

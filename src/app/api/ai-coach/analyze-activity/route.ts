@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
@@ -51,9 +50,12 @@ ${recentActivities?.slice(0, 5).map((run: any, index: number) =>
 ).join('\n') || 'No previous runs available'}
 
 Runner Profile:
-- Goal: ${onboardingData?.primaryGoal || 'General fitness'}
+- Name: ${userProfile?.name || 'Runner'}
+- Current Goal: ${userProfile?.currentGoal || onboardingData?.primaryGoal || 'General fitness'}
+- Current Weekly Miles: ${userProfile?.weeklyMiles || 'Unknown'}
+- Target Weekly Miles: ${userProfile?.targetWeeklyMiles || 'Unknown'}
 - Fitness Level: ${onboardingData?.fitnessLevel || 'Unknown'}
-- Current weekly miles: ${onboardingData?.weeklyMiles || 'Unknown'}
+- Training Days: ${onboardingData?.runningDays || 'Unknown'}
 - Injury history: ${onboardingData?.injuryHistory || 'None'}
 
 Provide coaching analysis specifically for this run, considering performance trends and the runner's goals.`
