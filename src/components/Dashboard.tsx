@@ -148,8 +148,6 @@ useEffect(() => {
   fetchStravaData();
 }, [session, currentStep, onboardingData]);
 
-  fetchStravaData();
-}, [session?.accessToken, currentStep, onboardingData]);
 
   // Onboarding questions
   const onboardingQuestions = [
